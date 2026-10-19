@@ -12,21 +12,58 @@ Five [pi](https://github.com/earendil-works/pi) coding-agent extensions. Written
 
 ## Install
 
+Install it as a pi package — do not copy files into `~/.pi/agent/extensions/`.
+
 ```bash
-git clone https://github.com/FourWindff/pi-extensions.git
-mkdir -p ~/.pi/agent/extensions
-cp -R pi-extensions/{ask-user,aurora-line,mode-switching,skill-rider,subagent} ~/.pi/agent/extensions/
+# any machine that only consumes the extensions
+pi install git:github.com/FourWindff/pi-extensions
+
+# the machine that edits this repo (live files, nothing to copy)
+pi install /home/kris/Code/pi-extensions
 ```
 
-Then in pi: `/reload`. Anything not picked up needs a restart.
+Restart pi. `/reload` is not enough: the extension source changed.
 
-Location is load-bearing: pi auto-loads every `.ts` file and every folder with an `index.ts` under `~/.pi/agent/extensions/`. Folders that are not extensions (mode files, tests) are fine — pi only reads `index.ts` from a folder.
+Both forms end up in `~/.pi/agent/settings.json` under `packages`. The package is one unit: the root `package.json` declares all five entry points under `pi.extensions`, so a single install covers all of them.
 
-**Do not run `npm install`.** pi's extension loader (jiti) aliases `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, `@earendil-works/pi-agent-core`, `@earendil-works/pi-tui` and `typebox` to its own installed copies. A missing `node_modules` here is expected.
+Pick one form per machine. Never both, and never a manual copy next to it — pi would load the same extension twice and register `ask_user` / `subagent` twice.
+
+**Do not run `npm install`.** pi's extension loader (jiti) aliases `@earendil-works/pi-coding-agent`, `@earendil-works/pi-ai`, `@earendil-works/pi-agent-core`, `@earendil-works/pi-tui` and `typebox` to its own installed copies; those are `peerDependencies` here on purpose.
+
+### Which form to use
+
+| Form | Where the files live | Gets update notices |
+| --- | --- | --- |
+| `git:github.com/FourWindff/pi-extensions` | pi-managed clone in `~/.pi/agent/git/github.com/FourWindff/pi-extensions` | yes (below) |
+| local path `/home/kris/Code/pi-extensions` | your own checkout, loaded in place, never copied | **no** |
+
+## Updating
+
+With the git form, pi checks at every startup whether the remote HEAD moved. When it has, the chat opens with a red-bordered box:
+
+```
+Package Updates Available
+Package updates are available. Run pi update --extensions
+Packages:
+- github.com/FourWindff/pi-extensions
+```
+
+Then:
+
+```bash
+pi update --extensions                                  # all packages
+pi update git:github.com/FourWindff/pi-extensions       # just this one
+```
+
+Update does `git fetch` + `git reset --hard` on the configured ref plus a dependency reconcile, so local edits inside the pi-managed clone are discarded — that clone is not a working copy. Restart pi afterwards.
+
+**The local-path form never notifies.** Update checks skip local packages by design (no remote to compare against). On the machine that edits this repo, `git pull` then `/reload` is the update path; that machine pushes, everyone else gets the startup notice.
+
+Both checks are skipped when `PI_OFFLINE` is set or the source is pinned to a ref (`@v1`, `@<sha>`).
 
 ## Verify each one
 
-Run inside pi after `/reload`:
+Run inside pi after the restart:
 
 1. `/tools` lists `ask_user` and `subagent`.
 2. `/hotkeys` shows `Shift+Tab — Cycle agent mode (build → plan → ask)`. If it does not, see the keybinding step below.
