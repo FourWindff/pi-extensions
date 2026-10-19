@@ -1,0 +1,27 @@
+{
+  "name": "fourwindff-pi-extensions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Five pi coding-agent extensions: subagent, ask-user, mode-switching, aurora-line, skill-rider",
+  "keywords": ["pi-package"],
+  "pi": {
+    "extensions": [
+      "./subagent/index.ts",
+      "./ask-user/index.ts",
+      "./mode-switching/index.ts",
+      "./aurora-line/index.ts",
+      "./skill-rider/index.ts"
+    ]
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-agent-core": "*",
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*",
+    "typebox": "*"
+  },
+  "scripts": {
+    "test": "cd ask-user && node --test && cd ../mode-switching && node --test && cd ../skill-rider && node --test riders.test.ts"
+  }
+}
