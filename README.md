@@ -123,4 +123,4 @@ Each extension keeps pure logic in its own file, free of pi imports and terminal
 | `subagent` | `agents.ts` | `index.ts`, `runs.ts` |
 | `aurora-line` | — | `aurora.ts`, `check.ts`, `index.ts` |
 
-Per-extension READMEs are in Chinese and are the authoritative source on behavior and edge cases.
+`ask-user`, `mode-switching` and `skill-rider` ship a README in Chinese — the authoritative source on behavior and edge cases. `subagent` and `aurora-line` are documented by comments in their own source.
