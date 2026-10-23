@@ -136,7 +136,7 @@ Empty content deletes the entry. Skill list changes need `/reload`; rider text i
 
 ### pi-lastssermessage — nothing to configure
 
-The latest submitted user message appears on the right of the editor's first border line. The preview occupies 40 terminal columns, right-aligns short messages, collapses multiline input and truncates long messages with `…`. Its trailing ` ──` mirrors the working status prefix `── `. Chinese and emoji use their terminal display width. Narrow windows shorten the preview or hide it to leave at least 40 columns for the native working/scroll status. Images appear as `[image]`; terminal control sequences are removed.
+The latest submitted user message appears on the right of the editor's first border line. The preview occupies 40 terminal columns, right-aligns short messages with border dashes filling unused space on the left and one space before the text, collapses multiline input and truncates long messages with `…`. Its trailing ` ──` mirrors the working status prefix `── `. Chinese and emoji use their terminal display width. Narrow windows shorten the preview or hide it to leave at least 40 columns for the native working/scroll status. Images appear as `[image]`; terminal control sequences are removed.
 
 It restores from the active session branch on startup/resume/reload and tree navigation. Draft input and queued messages do not replace the preview until they enter the conversation. It adds no transcript entries and does nothing outside TUI mode. See [`pi-lastssermessage/README.md`](pi-lastssermessage/README.md) for the rendering self-check.
 

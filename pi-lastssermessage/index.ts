@@ -54,8 +54,8 @@ export default function lastUserMessage(pi: ExtensionAPI): void {
 					const text = truncateToWidth(preview, previewWidth, "…");
 					const borderColor = editor.borderColor ?? theme.borderColor;
 					return renderTopBorder(width - previewWidth - 4, hiddenLines)
-						+ borderColor(" ")
-						+ ctx.ui.theme.fg("dim", " ".repeat(previewWidth - visibleWidth(text)) + text)
+						+ borderColor("─".repeat(previewWidth - visibleWidth(text)) + " ")
+						+ ctx.ui.theme.fg("dim", text)
 						+ borderColor(" ──");
 				};
 			}

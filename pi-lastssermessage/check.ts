@@ -52,7 +52,7 @@ async function check(): Promise<void> {
 	assert.equal(top(), "─".repeat(100), "no previous user message means no preview");
 
 	await emit("message_start", { message: user("First\nsecond\tthird") });
-	assert.equal(top().slice(57, 97), "First second third".padStart(40), "short previews align right");
+	assert.equal(top(), `${"─".repeat(78)} First second third ──`, "short previews align right without a blank padding block");
 	assert.ok(top().endsWith("third ──"), "preview ends with a space and two border dashes");
 	assert.ok(renders > 0, "message updates request a render");
 	await emit("message_start", { message: { role: "assistant", content: [] } });
@@ -62,7 +62,7 @@ async function check(): Promise<void> {
 	await emit("message_start", { message: user(shortWideText) });
 	for (let width = 52; width <= 180; width++) {
 		const line = top(width);
-		assert.ok(line.endsWith(`${shortWideText} ──`), "wide text keeps the same right margin after resize");
+		assert.equal(line, `${"─".repeat(width - visibleWidth(shortWideText) - 4)} ${shortWideText} ──`, "wide text keeps its right margin with continuous border padding");
 		assert.equal(visibleWidth(line), width);
 	}
 
@@ -77,7 +77,7 @@ async function check(): Promise<void> {
 	assert.ok(editor.renderTopBorder(100, 0).includes("\x1b[91m"), "theme colors are read at render time");
 
 	await emit("message_start", { message: user("\x1b[31mred\x1b[0m\x1b]0;title\x07\x00\x08") });
-	assert.equal(top().slice(57, 97), "red".padStart(40), "terminal escapes and control bytes are stripped");
+	assert.equal(top(), `${"─".repeat(93)} red ──`, "terminal escapes and control bytes are stripped");
 	await emit("message_start", { message: user([{ type: "image", data: "", mimeType: "image/png" }]) });
 	assert.ok(top().includes("[image]"), "image-only messages replace the old text");
 
