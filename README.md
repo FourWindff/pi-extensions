@@ -1,6 +1,6 @@
 # pi extensions
 
-Five [pi](https://github.com/earendil-works/pi) coding-agent extensions. Written for pi 1.x, TypeScript, no build step, no dependencies.
+Six [pi](https://github.com/earendil-works/pi) coding-agent extensions. Written for pi 1.x, TypeScript, no build step, no dependencies.
 
 | Directory | What it adds | Config needed |
 | --- | --- | --- |
@@ -8,6 +8,7 @@ Five [pi](https://github.com/earendil-works/pi) coding-agent extensions. Written
 | `ask-user/` | `ask_user` tool — one form holding every question, answered one at a time, review step before sending | none |
 | `mode-switching/` | build / plan / ask modes, `shift+tab` cycles them, per-mode tool whitelists, mode prompt injected as a system section | `keybindings.json` edit (below) |
 | `aurora-line/` | Visual: aurora curtains while the agent streams | none |
+| `pi-lastssermessage/` | Latest submitted user message on the right of the editor's top border, fixed 40-column preview | none |
 | `skill-rider/` | `/skill-rider` command — append an extra prompt to any skill without editing the skill's own files | optional rider store |
 
 ## Install
@@ -24,7 +25,7 @@ pi install /home/kris/Code/pi-extensions
 
 Restart pi. `/reload` is not enough: the extension source changed.
 
-Both forms end up in `~/.pi/agent/settings.json` under `packages`. The package is one unit: the root `package.json` declares all five entry points under `pi.extensions`, so a single install covers all of them.
+Both forms end up in `~/.pi/agent/settings.json` under `packages`. The package is one unit: the root `package.json` declares all six entry points under `pi.extensions`, so a single install covers all of them.
 
 Pick one form per machine. Never both, and never a manual copy next to it — pi would load the same extension twice and register `ask_user` / `subagent` twice.
 
@@ -69,6 +70,7 @@ Run inside pi after the restart:
 2. `/hotkeys` shows `Shift+Tab — Cycle agent mode (build → plan → ask)`. If it does not, see the keybinding step below.
 3. `/skill-rider` opens the panel; `Esc` closes it.
 4. Send any message and watch a streaming response: aurora curtains appear and dissolve when the run ends.
+5. The submitted message appears on the right of the editor's top border; both borders use the same `── ` prefix, with the mode label aligned to the working status block (including its spinner).
 
 ## Per-extension prerequisites
 
@@ -132,6 +134,12 @@ Extra prompts per skill live in `~/.pi/agent/skill-riders.json`, created by the 
 
 Empty content deletes the entry. Skill list changes need `/reload`; rider text is re-read on every use.
 
+### pi-lastssermessage — nothing to configure
+
+The latest submitted user message appears on the right of the editor's first border line. The preview occupies 40 terminal columns, right-aligns short messages, collapses multiline input and truncates long messages with `…`. Its trailing ` ──` mirrors the working status prefix `── `. Chinese and emoji use their terminal display width. Narrow windows shorten the preview or hide it to leave at least 40 columns for the native working/scroll status. Images appear as `[image]`; terminal control sequences are removed.
+
+It restores from the active session branch on startup/resume/reload and tree navigation. Draft input and queued messages do not replace the preview until they enter the conversation. It adds no transcript entries and does nothing outside TUI mode. See [`pi-lastssermessage/README.md`](pi-lastssermessage/README.md) for the rendering self-check.
+
 ### ask-user, aurora-line — nothing to configure
 
 Both require a real TUI. In `--mode json`, print, rpc and subagent child processes, `ask_user` removes itself from the active tool set at `session_start`; aurora paints nothing.
@@ -146,7 +154,7 @@ cd mode-switching && node --test
 cd skill-rider    && node --test riders.test.ts
 ```
 
-`subagent/` and `aurora-line/` have no tests — both are mostly wiring around pi APIs.
+`pi-lastssermessage/check.ts` checks preview rendering, composition with mode-switching, and alignment using Pi's own loader dependencies (see its README). `aurora-line/check.ts` also provides rendering/wiring assertions. `subagent/` has no standalone tests.
 
 ## Layout, if you plan to modify
 
@@ -159,5 +167,6 @@ Each extension keeps pure logic in its own file, free of pi imports and terminal
 | `skill-rider` | `riders.ts` | `index.ts`, `panel.ts` |
 | `subagent` | `agents.ts` | `index.ts`, `runs.ts` |
 | `aurora-line` | — | `aurora.ts`, `check.ts`, `index.ts` |
+| `pi-lastssermessage` | — | `index.ts`, `check.ts` |
 
 `ask-user`, `mode-switching` and `skill-rider` ship a README in Chinese — the authoritative source on behavior and edge cases. `subagent` and `aurora-line` are documented by comments in their own source.

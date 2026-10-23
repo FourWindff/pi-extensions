@@ -301,7 +301,7 @@ function borderLabel(ctx: ExtensionContext, mode: Mode, branch: string | null | 
 	const theme = ctx.ui.theme;
 	const modeText = theme.fg(MODE_COLORS[mode], ` ${mode} `);
 	const location = `${formatCwd(ctx.cwd)}${branch ? ` (${branch})` : ""}`;
-	const room = width - visibleWidth(modeText) - 2;
+	const room = width - visibleWidth(modeText) - 3;
 	if (room <= 8) return modeText;
 	return modeText + theme.fg("dim", ` ${truncateToWidth(location, room - 2, "…")} `);
 }
@@ -343,7 +343,7 @@ function decorateBottomBorder(
 	});
 }
 
-/** `─ build ~/Code/MindLane (main) ─────` — label anchored left; plain border when it cannot fit. */
+/** `── build ~/Code/MindLane (main) ──` — same prefix as the native working status border. */
 function bottomBorderWithLabel(
 	width: number,
 	label: (maxWidth: number) => string,
@@ -351,6 +351,6 @@ function bottomBorderWithLabel(
 ): string {
 	const text = label(width);
 	const labelWidth = visibleWidth(text);
-	if (width < labelWidth + 2) return borderColor("─".repeat(Math.max(0, width)));
-	return borderColor("─") + text + borderColor("─".repeat(width - labelWidth - 1));
+	if (width < labelWidth + 3) return borderColor("─".repeat(Math.max(0, width)));
+	return borderColor("──") + text + borderColor("─".repeat(width - labelWidth - 2));
 }

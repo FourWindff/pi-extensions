@@ -1,6 +1,6 @@
 # pi 三模式扩展（build / plan / ask）
 
-三种工作状态，一个手势单向循环：**build → plan → ask → build**（shift+tab）。当前模式显示在输入框底边框**左侧**，紧跟其后是当前位置（`~/路径 (分支)`），颜色跟随主题：build 蓝、plan 黄、ask 绿。为此 pi 自带 footer 的 pwd 行被接管拿掉（见下方「已知边界」）。
+三种工作状态，一个手势单向循环：**build → plan → ask → build**（shift+tab）。当前模式显示在输入框底边框**左侧**，开头与上边框工作状态统一使用 `── ` 前缀，模式名与工作状态块（包含 spinner）起点对齐，紧跟其后是当前位置（`~/路径 (分支)`），颜色跟随主题：build 蓝、plan 黄、ask 绿。为此 pi 自带 footer 的 pwd 行被接管拿掉（见下方「已知边界」）。
 
 - **build**：今天的 pi。工具集不动，零回归；提问表单本来就在全量注册工具里。
 - **plan**：只读研究 + 只能写 `.pi/plans/<slug>.md` + 只能派只读子 agent `explore` + 能用一个提问表单把待确认的问题一次交给用户。**bash 不设限**（用户明确要求：不再做任何字符判定，`rm`、`git commit`、`npm install` 都放行）。write/edit 与子 agent 两条仍由工具层强制，不靠模型自觉。
@@ -84,7 +84,7 @@ node --test
 
 ## 手工验证清单
 
-1. 启动 pi，输入框底边框左侧出现 `build`（蓝），紧跟 `~/Code/MindLane (main)`；footer 只剩统计行（pwd 行没了）。
+1. 启动 pi，输入框底边框左侧出现 `build`（蓝），紧跟 `~/Code/MindLane (main)`；上下边框开头都为 `── `，模式名与上方工作状态块（包含 spinner）起点对齐；footer 只剩统计行（pwd 行没了）。
 2. shift+tab → 变 `plan`（黄），并有一条提示；`alt+t` 仍能切 thinking。
 3. plan 里让模型改 `src/` 下的文件 → 被拦，理由里带「切到 build」。
 4. plan 里让它写 `.pi/plans/demo.md` → 放行，文件出现。
