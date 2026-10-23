@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Six pi coding-agent extensions: subagent, ask-user, mode-switching, aurora-line, skill-rider, pi-lastssermessage",
+  "description": "Six pi coding-agent extensions: subagent, ask-user, mode-switching, aurora-line, skill-rider, last-user-message",
   "keywords": ["pi-package"],
   "pi": {
     "extensions": [
@@ -12,7 +12,7 @@
       "./mode-switching/index.ts",
       "./aurora-line/index.ts",
       "./skill-rider/index.ts",
-      "./pi-lastssermessage/index.ts"
+      "./last-user-message/index.ts"
     ]
   },
   "peerDependencies": {

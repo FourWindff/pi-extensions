@@ -8,7 +8,7 @@ Six [pi](https://github.com/earendil-works/pi) coding-agent extensions. Written 
 | `ask-user/` | `ask_user` tool — one form holding every question, answered one at a time, review step before sending | none |
 | `mode-switching/` | build / plan / ask modes, `shift+tab` cycles them, per-mode tool whitelists, mode prompt injected as a system section | `keybindings.json` edit (below) |
 | `aurora-line/` | Visual: aurora curtains while the agent streams | none |
-| `pi-lastssermessage/` | Latest submitted user message on the right of the editor's top border, fixed 40-column preview | none |
+| `last-user-message/` | Latest submitted user message on the right of the editor's top border, fixed 40-column preview | none |
 | `skill-rider/` | `/skill-rider` command — append an extra prompt to any skill without editing the skill's own files | optional rider store |
 
 ## Install
@@ -134,11 +134,11 @@ Extra prompts per skill live in `~/.pi/agent/skill-riders.json`, created by the 
 
 Empty content deletes the entry. Skill list changes need `/reload`; rider text is re-read on every use.
 
-### pi-lastssermessage — nothing to configure
+### last-user-message — nothing to configure
 
 The latest submitted user message appears on the right of the editor's first border line. The preview occupies 40 terminal columns, right-aligns short messages with border dashes filling unused space on the left and one space before the text, collapses multiline input and truncates long messages with `…`. Its trailing ` ──` mirrors the working status prefix `── `. Chinese and emoji use their terminal display width. Narrow windows shorten the preview or hide it to leave at least 40 columns for the native working/scroll status. Images appear as `[image]`; terminal control sequences are removed.
 
-It restores from the active session branch on startup/resume/reload and tree navigation. Draft input and queued messages do not replace the preview until they enter the conversation. It adds no transcript entries and does nothing outside TUI mode. See [`pi-lastssermessage/README.md`](pi-lastssermessage/README.md) for the rendering self-check.
+It restores from the active session branch on startup/resume/reload and tree navigation. Draft input and queued messages do not replace the preview until they enter the conversation. It adds no transcript entries and does nothing outside TUI mode. See [`last-user-message/README.md`](last-user-message/README.md) for the rendering self-check.
 
 ### ask-user, aurora-line — nothing to configure
 
@@ -154,7 +154,7 @@ cd mode-switching && node --test
 cd skill-rider    && node --test riders.test.ts
 ```
 
-`pi-lastssermessage/check.ts` checks preview rendering, composition with mode-switching, and alignment using Pi's own loader dependencies (see its README). `aurora-line/check.ts` also provides rendering/wiring assertions. `subagent/` has no standalone tests.
+`last-user-message/check.ts` checks preview rendering, composition with mode-switching, and alignment using Pi's own loader dependencies (see its README). `aurora-line/check.ts` also provides rendering/wiring assertions. `subagent/` has no standalone tests.
 
 ## Layout, if you plan to modify
 
@@ -167,6 +167,6 @@ Each extension keeps pure logic in its own file, free of pi imports and terminal
 | `skill-rider` | `riders.ts` | `index.ts`, `panel.ts` |
 | `subagent` | `agents.ts` | `index.ts`, `runs.ts` |
 | `aurora-line` | — | `aurora.ts`, `check.ts`, `index.ts` |
-| `pi-lastssermessage` | — | `index.ts`, `check.ts` |
+| `last-user-message` | — | `index.ts`, `check.ts` |
 
 `ask-user`, `mode-switching` and `skill-rider` ship a README in Chinese — the authoritative source on behavior and edge cases. `subagent` and `aurora-line` are documented by comments in their own source.

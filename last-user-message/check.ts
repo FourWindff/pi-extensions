@@ -125,7 +125,7 @@ async function check(): Promise<void> {
 	await emit("session_start");
 	await emit("message_start", { message: user("not interactive") });
 	assert.equal(factory, undefined, "non-TUI sessions are untouched");
-	console.log("pi-lastssermessage: preview, editor composition and mode alignment checks passed");
+	console.log("last-user-message: preview, editor composition and mode alignment checks passed");
 }
 
 void check();

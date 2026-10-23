@@ -1,4 +1,4 @@
-# pi-lastssermessage
+# last-user-message
 
 在输入框第一条边框的右侧显示最近一条已进入会话的用户消息，不增加行数，不修改聊天记录。
 
@@ -34,7 +34,7 @@ const alias = Object.fromEntries([
 alias['@earendil-works/pi-ai'] = `${root}/@earendil-works/pi-ai/dist/compat.js`;
 for (const name of ['typebox', 'typebox/compile', 'typebox/value']) alias[name] = requirePi.resolve(name);
 const jiti = createJiti(`${process.cwd()}/package.json`, { alias, moduleCache: false, fsCache: false });
-await jiti.import(`${process.cwd()}/pi-lastssermessage/check.ts`);
+await jiti.import(`${process.cwd()}/last-user-message/check.ts`);
 NODE
 ```
 
