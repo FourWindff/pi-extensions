@@ -461,24 +461,23 @@ test("regular mode also supports focus following and review paging", { timeout: 
 	assert.equal((await result).details.answers.length, 12);
 });
 
-test("the form is a fixed-height panel docked at the bottom", { timeout: 5000 }, async (t) => {
-	// Must match PANEL_ROWS in index.ts.
-	const PANEL_ROWS = 14;
-	for (const [rows, panelRows] of [[18, PANEL_ROWS], [10, 10]]) {
-		for (const mode of ["fullscreen", "regular"]) {
-			const { harness } = await openForm(t, [{ question: "Only one?", options: ["yes", "no"] }], 64, rows, mode);
-			const lines = harness.lines();
-			const where = `${mode} ${rows}x64`;
-			assert.equal(lines.length, rows, `${where}: the terminal keeps its rows`);
-			assert.match(lines.at(-1) ?? "", /Question 1\/1/u, `${where}: the status line belongs on the last row`);
-			const panelStart = lines.findIndex((line) => line.includes("\u2500"));
-			assert.equal(panelStart, rows - panelRows, `${where}: the panel keeps a fixed height at the bottom\n${harness.screen()}`);
-			if (rows > panelRows) {
-				assert.ok(lines.slice(0, panelStart).some((line) => line.includes("TRANSCRIPT-")),
-					`${where}: the transcript stays visible above the panel\n${harness.screen()}`);
-			}
-			assert.ok(!lines.slice(panelStart).some((line) => line.includes("TRANSCRIPT-")),
-				`${where}: no transcript may show inside the panel\n${harness.screen()}`);
-		}
+test("the form hugs its content and only fills the screen when the questions do", { timeout: 5000 }, async (t) => {
+	for (const mode of ["fullscreen", "regular"]) {
+		const { harness } = await openForm(t, [{ question: "Only one?", options: ["yes", "no"] }], 64, 18, mode);
+		const lines = harness.lines();
+		const panelStart = lines.findIndex((line) => line.includes("\u2500"));
+		assert.equal(lines.length, 18, `${mode}: the terminal keeps its rows`);
+		assert.ok(panelStart > 0, `${mode}: one question must not take the whole screen\n${harness.screen()}`);
+		assert.match(lines.at(-1) ?? "", /Question 1\/1/u, `${mode}: the status line belongs on the last row`);
+		assert.match(lines.at(-2) ?? "", /Type an answer/u, `${mode}: the form must not be padded with blank rows\n${harness.screen()}`);
+		assert.ok(!lines.slice(panelStart).some((line) => line.includes("TRANSCRIPT-")),
+			`${mode}: no transcript may show inside the form\n${harness.screen()}`);
+		assert.ok(lines.slice(0, panelStart).some((line) => line.includes("TRANSCRIPT-")),
+			`${mode}: the transcript stays visible above the form\n${harness.screen()}`);
+
+		const tall = await openForm(t, questions(12), 64, 18, mode);
+		assert.equal(tall.harness.lines().findIndex((line) => line.includes("\u2500")), 0,
+			`${mode}: a tall form fills the screen\n${tall.harness.screen()}`);
+		assert.match(tall.harness.screen(), /PgUp\/PgDn scroll/u, `${mode}: a tall form scrolls inside the screen`);
 	}
 });

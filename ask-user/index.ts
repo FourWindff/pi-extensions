@@ -56,9 +56,6 @@ import {
 /** Registered name; the mode files whitelist it and this extension drops it without a TUI. */
 const QUESTION_TOOL_NAME = "ask_user";
 
-/** Rows the form always takes, docked at the bottom of the terminal. */
-const PANEL_ROWS = 14;
-
 interface QuestionDetails {
 	questions: Question[];
 	/** One answer per question, index-aligned; "(no answer)" for a question confirmed empty. */
@@ -111,7 +108,7 @@ export default function askUser(pi: ExtensionAPI): void {
 
 			const flow = await ctx.ui.custom<QuestionFlow | null>(
 				(tui, theme, keybindings, done) => createQuestionForm(tui, theme, keybindings, questions, done, signal),
-				{ overlay: true, overlayOptions: { width: "100%", maxHeight: PANEL_ROWS, anchor: "bottom-center" } },
+				{ overlay: true, overlayOptions: { width: "100%", maxHeight: "100%", anchor: "bottom-center" } },
 			);
 			if (!flow) {
 				return {
@@ -302,7 +299,7 @@ function createQuestionForm(
 	}
 
 	function render(width: number): string[] {
-		const height = Math.min(PANEL_ROWS, Math.max(1, tui.terminal.rows));
+		const height = Math.max(1, tui.terminal.rows);
 		if (cachedLines && cachedWidth === width && cachedHeight === height) return cachedLines;
 
 		const renderWidth = Math.max(1, width);
@@ -387,11 +384,7 @@ function createQuestionForm(
 				: "─".repeat(renderWidth);
 			output.push(truncateToWidth(theme.fg("accent", heading), renderWidth));
 		}
-		const visible = lines.slice(scrollTop, scrollTop + viewportHeight);
-		output.push(...visible);
-		// Pad the content area to the full panel so the form keeps its fixed height
-		// and its status line stays on the last row.
-		for (let index = visible.length; index < viewportHeight; index++) output.push("");
+		output.push(...lines.slice(scrollTop, scrollTop + viewportHeight));
 		if (hasScrollHint) {
 			const position = `${scrollTop + 1}-${Math.min(scrollTop + viewportHeight, contentHeight)}/${contentHeight}`;
 			output.push(truncateToWidth(theme.fg("dim", ` PgUp/PgDn scroll · ${position}`), renderWidth));
