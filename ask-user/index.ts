@@ -56,6 +56,13 @@ import {
 /** Registered name; the mode files whitelist it and this extension drops it without a TUI. */
 const QUESTION_TOOL_NAME = "ask_user";
 
+/**
+ * Shortest form, in rows. A one-question review is only four rows tall, which
+ * leaves the pi input box (its top border shows the Working label) visible
+ * right below the form.
+ */
+const MIN_ROWS = 10;
+
 interface QuestionDetails {
 	questions: Question[];
 	/** One answer per question, index-aligned; "(no answer)" for a question confirmed empty. */
@@ -301,7 +308,6 @@ function createQuestionForm(
 	function render(width: number): string[] {
 		const height = Math.max(1, tui.terminal.rows);
 		if (cachedLines && cachedWidth === width && cachedHeight === height) return cachedLines;
-
 		const renderWidth = Math.max(1, width);
 		const lines: string[] = [];
 		const review = isReview(flow);
@@ -384,7 +390,11 @@ function createQuestionForm(
 				: "─".repeat(renderWidth);
 			output.push(truncateToWidth(theme.fg("accent", heading), renderWidth));
 		}
-		output.push(...lines.slice(scrollTop, scrollTop + viewportHeight));
+		const visible = lines.slice(scrollTop, scrollTop + viewportHeight);
+		output.push(...visible);
+		// Pad a short form up to MIN_ROWS so it still covers the input box below.
+		const minRows = Math.min(MIN_ROWS - Number(hasHeader) - Number(hasStatus) - Number(hasScrollHint), viewportHeight);
+		for (let index = visible.length; index < minRows; index++) output.push("");
 		if (hasScrollHint) {
 			const position = `${scrollTop + 1}-${Math.min(scrollTop + viewportHeight, contentHeight)}/${contentHeight}`;
 			output.push(truncateToWidth(theme.fg("dim", ` PgUp/PgDn scroll · ${position}`), renderWidth));

@@ -461,19 +461,29 @@ test("regular mode also supports focus following and review paging", { timeout: 
 	assert.equal((await result).details.answers.length, 12);
 });
 
-test("the form hugs its content and only fills the screen when the questions do", { timeout: 5000 }, async (t) => {
+test("the form hugs its content, keeps a floor, and fills the screen only when the questions do", { timeout: 5000 }, async (t) => {
+	// Must match MIN_ROWS in index.ts.
+	const MIN_ROWS = 10;
 	for (const mode of ["fullscreen", "regular"]) {
 		const { harness } = await openForm(t, [{ question: "Only one?", options: ["yes", "no"] }], 64, 18, mode);
 		const lines = harness.lines();
 		const panelStart = lines.findIndex((line) => line.includes("\u2500"));
 		assert.equal(lines.length, 18, `${mode}: the terminal keeps its rows`);
-		assert.ok(panelStart > 0, `${mode}: one question must not take the whole screen\n${harness.screen()}`);
+		assert.equal(panelStart, 18 - MIN_ROWS, `${mode}: a one-question form keeps its minimum height\n${harness.screen()}`);
 		assert.match(lines.at(-1) ?? "", /Question 1\/1/u, `${mode}: the status line belongs on the last row`);
-		assert.match(lines.at(-2) ?? "", /Type an answer/u, `${mode}: the form must not be padded with blank rows\n${harness.screen()}`);
 		assert.ok(!lines.slice(panelStart).some((line) => line.includes("TRANSCRIPT-")),
-			`${mode}: no transcript may show inside the form\n${harness.screen()}`);
+			`${mode}: nothing may show through the form\n${harness.screen()}`);
 		assert.ok(lines.slice(0, panelStart).some((line) => line.includes("TRANSCRIPT-")),
 			`${mode}: the transcript stays visible above the form\n${harness.screen()}`);
+
+		// The review of a single answer is the shortest state: it must still cover the input box.
+		harness.key(ENTER);
+		const reviewLines = harness.lines();
+		const reviewStart = reviewLines.findIndex((line) => line.includes("\u2500"));
+		assert.equal(reviewStart, 18 - MIN_ROWS, `${mode}: the review keeps the minimum height\n${harness.screen()}`);
+		assert.match(reviewLines.at(-1) ?? "", /Enter to send/u, `${mode}: the review status line is last`);
+		assert.ok(!reviewLines.slice(reviewStart).some((line) => line.includes("TRANSCRIPT-")),
+			`${mode}: nothing may show through the review\n${harness.screen()}`);
 
 		const tall = await openForm(t, questions(12), 64, 18, mode);
 		assert.equal(tall.harness.lines().findIndex((line) => line.includes("\u2500")), 0,
