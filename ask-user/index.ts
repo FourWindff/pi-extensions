@@ -1,8 +1,8 @@
 /**
  * ask_user: one form for every question the user has to answer.
  *
- * All questions are rendered at once; the user answers them one at a time with
- * a single editor or choice list that walks down the list. After the last
+ * All questions share a scrollable form; the user answers them one at a time
+ * with a single editor or choice list that walks down the list. After the last
  * answer the form moves to a review step, and only Enter pressed there is sent
  * back to the model. The state machine lives in questionFlow.ts; this file
  * renders it and registers the tool.
@@ -18,13 +18,18 @@
 import type { ExtensionAPI, Theme } from "@earendil-works/pi-coding-agent";
 import {
 	type Component,
+	CURSOR_MARKER,
 	Editor,
 	type EditorTheme,
 	type Focusable,
 	Key,
+	type KeybindingsManager,
 	matchesKey,
+	parseKey,
 	Text,
 	type TUI,
+	type TuiMouseEvent,
+	truncateToWidth,
 	visibleWidth,
 	wrapTextWithAnsi,
 } from "@earendil-works/pi-tui";
@@ -50,6 +55,9 @@ import {
 
 /** Registered name; the mode files whitelist it and this extension drops it without a TUI. */
 const QUESTION_TOOL_NAME = "ask_user";
+
+/** Rows the form always takes, docked at the bottom of the terminal. */
+const PANEL_ROWS = 14;
 
 interface QuestionDetails {
 	questions: Question[];
@@ -101,8 +109,9 @@ export default function askUser(pi: ExtensionAPI): void {
 				return failed(questions, "No questions were provided.");
 			}
 
-			const flow = await ctx.ui.custom<QuestionFlow | null>((tui, theme, _keybindings, done) =>
-				createQuestionForm(tui, theme, questions, done, signal),
+			const flow = await ctx.ui.custom<QuestionFlow | null>(
+				(tui, theme, keybindings, done) => createQuestionForm(tui, theme, keybindings, questions, done, signal),
+				{ overlay: true, overlayOptions: { width: "100%", maxHeight: PANEL_ROWS, anchor: "bottom-center" } },
 			);
 			if (!flow) {
 				return {
@@ -180,12 +189,19 @@ function failed(questions: Question[], text: string) {
 function createQuestionForm(
 	tui: TUI,
 	theme: Theme,
+	keybindings: KeybindingsManager,
 	questions: readonly Question[],
 	done: (result: QuestionFlow | null) => void,
 	signal: AbortSignal | undefined,
 ): Component & Focusable & { dispose(): void } {
 	let flow = startFlow(questions);
 	let cachedLines: string[] | undefined;
+	let cachedWidth = 0;
+	let cachedHeight = 0;
+	let scrollTop = 0;
+	let contentHeight = 0;
+	let viewportHeight = 1;
+	let followFocus = true;
 
 	const editor = new Editor(tui, editorTheme(theme));
 	editor.onSubmit = (value) => {
@@ -194,12 +210,29 @@ function createQuestionForm(
 		refresh();
 	};
 
-	function refresh(): void {
+	function refresh(follow = true): void {
+		followFocus = follow;
 		cachedLines = undefined;
 		tui.requestRender();
 	}
 
+	function scrollBy(lines: number): void {
+		scrollTop = Math.max(0, Math.min(scrollTop + lines, contentHeight - viewportHeight));
+		refresh(false);
+	}
+
 	function handleInput(data: string): void {
+		const key = parseKey(data);
+		const typingText = !isReview(flow) && !isPicking(flow) && key !== undefined && /^(?:shift\+)?(?:space|.)$/u.test(key);
+		if (matchesKey(data, Key.pageUp) || (!typingText && keybindings.matches(data, "tui.select.pageUp"))) {
+			scrollBy(-Math.max(1, viewportHeight - 1));
+			return;
+		}
+		if (matchesKey(data, Key.pageDown) || (!typingText && keybindings.matches(data, "tui.select.pageDown"))) {
+			scrollBy(Math.max(1, viewportHeight - 1));
+			return;
+		}
+
 		if (isReview(flow)) {
 			// The review step is read-only: Enter sends, Esc goes back to editing.
 			if (matchesKey(data, Key.enter)) {
@@ -269,11 +302,15 @@ function createQuestionForm(
 	}
 
 	function render(width: number): string[] {
-		if (cachedLines) return cachedLines;
+		const height = Math.min(PANEL_ROWS, Math.max(1, tui.terminal.rows));
+		if (cachedLines && cachedWidth === width && cachedHeight === height) return cachedLines;
 
 		const renderWidth = Math.max(1, width);
 		const lines: string[] = [];
 		const review = isReview(flow);
+		let focusStart = 0;
+		let focusTarget = 0;
+		let focusEnd = 0;
 
 		/** Push wrapped text; every line after the first indents under the prefix. */
 		const addWrapped = (prefix: string, text: string) => {
@@ -287,13 +324,11 @@ function createQuestionForm(
 			wrapped.forEach((line, index) => lines.push(`${index === 0 ? prefix : continuation}${line}`));
 		};
 
-		lines.push(theme.fg("accent", "─".repeat(renderWidth)));
-		lines.push("");
-
 		for (let index = 0; index < flow.questions.length; index++) {
 			if (index > 0) lines.push("");
 			const question = flow.questions[index]!;
 			const active = !review && index === flow.cursor;
+			if (active) focusStart = lines.length;
 			const answer = answerLabel(question, flow.answers[index]);
 			const color = active ? "accent" : answer ? "success" : "muted";
 			addWrapped(" ", theme.fg(color, `${index + 1}. ${question.prompt}`));
@@ -304,34 +339,78 @@ function createQuestionForm(
 					const selected = row === flow.optionIndex;
 					const label = isEditorRow ? "✎ Type an answer…" : `${row + 1}. ${question.options[row]}`;
 					const rowColor = selected ? "accent" : isEditorRow ? "muted" : "text";
-					addWrapped(selected ? theme.fg("accent", "  > ") : "    ", theme.fg(rowColor, label));
+					const rowStart = lines.length;
+					if (renderWidth < 3 && selected) lines.push(theme.fg("accent", ">"));
+					const prefix = renderWidth >= 6 ? (selected ? "  > " : "    ") : renderWidth >= 3 ? (selected ? "> " : " ") : "";
+					addWrapped(selected ? theme.fg("accent", prefix) : prefix, theme.fg(rowColor, label));
+					if (selected) {
+						focusTarget = rowStart;
+						focusEnd = lines.length - 1;
+					}
 				}
 			} else if (active) {
-				for (const line of editor.render(Math.max(1, renderWidth - 2))) lines.push(` ${line}`);
+				const indent = renderWidth > 1 ? " " : "";
+				const editorLines = editor.render(Math.max(1, renderWidth - indent.length));
+				const cursor = editorLines.findIndex((line) => line.includes(CURSOR_MARKER));
+				focusTarget = lines.length + Math.max(0, cursor);
+				focusEnd = focusTarget;
+				for (const line of editorLines) lines.push(`${indent}${line}`);
 			} else if (answer || review) {
 				addWrapped("    ", theme.fg(answer ? "text" : "dim", answer || "(no answer)"));
 			}
 		}
 
-		lines.push("");
-		if (review) {
-			addWrapped(" ", theme.fg("success", "Enter to send") + theme.fg("dim", " · Esc to edit the last answer"));
-		} else {
-			const step = `Question ${flow.cursor + 1}/${flow.questions.length}`;
-			const hasChoices = (currentQuestion(flow)?.options.length ?? 0) > 0;
-			const escapeHint =
-				isPicking(flow) || !hasChoices
-					? flow.cursor === 0
-						? "Esc to cancel"
-						: "Esc to go back"
-					: "Esc for the choices";
-			const enterHint = isPicking(flow) ? "↑↓ choose · Enter select" : "Enter to confirm";
-			addWrapped(" ", theme.fg("muted", `${step} · ${enterHint} · ${escapeHint}`));
-		}
-		lines.push(theme.fg("accent", "─".repeat(renderWidth)));
+		const hasHeader = height >= 3;
+		const hasStatus = height >= 2;
+		const hasScrollHint = height >= 5 && lines.length > height - Number(hasHeader) - Number(hasStatus);
+		contentHeight = lines.length;
+		viewportHeight = Math.max(1, height - Number(hasHeader) - Number(hasStatus) - Number(hasScrollHint));
+		const questionStart = focusStart;
 
-		cachedLines = lines;
-		return lines;
+		if (followFocus) {
+			if (review) {
+				scrollTop = 0;
+			} else {
+				if (focusEnd - focusStart >= viewportHeight) focusStart = focusTarget;
+				if (focusEnd - focusStart >= viewportHeight) focusEnd = focusStart;
+				if (focusStart < scrollTop) scrollTop = focusStart;
+				if (focusEnd >= scrollTop + viewportHeight) scrollTop = focusEnd - viewportHeight + 1;
+			}
+		}
+		scrollTop = Math.max(0, Math.min(scrollTop, contentHeight - viewportHeight));
+
+		const output: string[] = [];
+		if (hasHeader) {
+			const questionHidden = !review && (questionStart < scrollTop || questionStart >= scrollTop + viewportHeight);
+			const heading = questionHidden
+				? ` ${flow.cursor + 1}. ${currentQuestion(flow)?.prompt.replace(/\s+/g, " ")}`
+				: "─".repeat(renderWidth);
+			output.push(truncateToWidth(theme.fg("accent", heading), renderWidth));
+		}
+		const visible = lines.slice(scrollTop, scrollTop + viewportHeight);
+		output.push(...visible);
+		// Pad the content area to the full panel so the form keeps its fixed height
+		// and its status line stays on the last row.
+		for (let index = visible.length; index < viewportHeight; index++) output.push("");
+		if (hasScrollHint) {
+			const position = `${scrollTop + 1}-${Math.min(scrollTop + viewportHeight, contentHeight)}/${contentHeight}`;
+			output.push(truncateToWidth(theme.fg("dim", ` PgUp/PgDn scroll · ${position}`), renderWidth));
+		}
+		if (hasStatus) {
+			const hasChoices = (currentQuestion(flow)?.options.length ?? 0) > 0;
+			const escapeHint = isPicking(flow) || !hasChoices
+				? flow.cursor === 0 ? "Esc cancel" : "Esc back"
+				: "Esc choices";
+			const status = review
+				? "Enter to send · Esc to edit the last answer"
+				: `Question ${flow.cursor + 1}/${flow.questions.length} · ${isPicking(flow) ? "↑↓ choose · Enter select" : "Enter confirm"} · ${escapeHint}`;
+			output.push(truncateToWidth(theme.fg(review ? "success" : "muted", ` ${status}`), renderWidth));
+		}
+
+		cachedWidth = width;
+		cachedHeight = height;
+		cachedLines = output;
+		return output;
 	}
 
 	// The turn can be aborted while the form is open; without this the dialog
@@ -347,6 +426,7 @@ function createQuestionForm(
 			return editor.focused;
 		},
 		set focused(value: boolean) {
+			if (editor.focused !== value) cachedLines = undefined;
 			editor.focused = value;
 		},
 		render,
@@ -354,6 +434,11 @@ function createQuestionForm(
 			cachedLines = undefined;
 		},
 		handleInput,
+		handleMouse: (event: TuiMouseEvent) => {
+			if (event.type !== "wheel") return undefined;
+			scrollBy(event.wheelDelta ?? 0);
+			return { handled: true };
+		},
 		dispose: () => signal?.removeEventListener("abort", onAbort),
 	};
 }
