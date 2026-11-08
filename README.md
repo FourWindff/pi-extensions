@@ -1,6 +1,6 @@
 # pi extensions
 
-Six [pi](https://github.com/earendil-works/pi) coding-agent extensions. Written for pi 1.x, TypeScript, no build step, no dependencies.
+Six [pi](https://github.com/earendil-works/pi) coding-agent extensions and one skill. Written for pi 1.x, TypeScript, no build step, no dependencies.
 
 | Directory | What it adds | Config needed |
 | --- | --- | --- |
@@ -10,6 +10,9 @@ Six [pi](https://github.com/earendil-works/pi) coding-agent extensions. Written 
 | `aurora-line/` | Visual: aurora curtains while the agent streams | none |
 | `last-user-message/` | Latest submitted user message on the right of the editor's top border, fixed 40-column preview | none |
 | `skill-rider/` | `/skill-rider` command — append an extra prompt to any skill without editing the skill's own files | optional rider store |
+| `skills/issue-workflow/` | Skill: batch-implement an issue directory — DAG from `Blocked by`, 5 worktrees in parallel, one subagent per issue, merge back as each returns | `general` agent, `/skill:implement`, `PI_SUBAGENT_MAX_CONCURRENCY=5` |
+
+Skills ride along with the extensions: `package.json` declares `pi.skills`, so the same `pi install` line installs both.
 
 ## Install
 
@@ -25,7 +28,9 @@ pi install /home/kris/Code/pi-extensions
 
 Restart pi. `/reload` is not enough: the extension source changed.
 
-Both forms end up in `~/.pi/agent/settings.json` under `packages`. The package is one unit: the root `package.json` declares all six entry points under `pi.extensions`, so a single install covers all of them.
+Both forms end up in `~/.pi/agent/settings.json` under `packages`. The package is one unit: the root `package.json` declares all six extension entry points under `pi.extensions` and the skill under `pi.skills`, so a single install covers all of them.
+
+Installing the package also loads `skills/issue-workflow`. If a hand-copied `~/.pi/agent/skills/issue-workflow/` still exists, remove it — otherwise pi loads the skill twice.
 
 Pick one form per machine. Never both, and never a manual copy next to it — pi would load the same extension twice and register `ask_user` / `subagent` twice.
 
@@ -143,6 +148,22 @@ It restores from the active session branch on startup/resume/reload and tree nav
 ### ask-user, aurora-line — nothing to configure
 
 Both require a real TUI. In `--mode json`, print, rpc and subagent child processes, `ask_user` removes itself from the active tool set at `session_start`; aurora paints nothing.
+
+### issue-workflow — three prerequisites
+
+The skill (`skills/issue-workflow/SKILL.md`, invoke with `/skill:issue-workflow`) dispatches one subagent per issue, so it needs the pieces named in its own `前置` section:
+
+1. The `subagent` extension from this repo, loaded.
+2. An agent named `general` in `~/.pi/agent/agents/general.md` (`delegate` does not exist). `tools:` should include `read, grep, find, ls, bash, edit, write`.
+3. The `/skill:implement` skill — the skill's dispatch prompt calls it inside each worktree.
+
+Five lanes instead of four require an env override plus a restart, because `subagent/` reads it at import time:
+
+```bash
+export PI_SUBAGENT_MAX_CONCURRENCY=5   # then restart pi, /reload is not enough
+```
+
+It also refuses to start on a dirty checkout (`git status --porcelain`), and creates its worktrees under `.pi/issue-worktrees/` — leave `.pi/` alone while a run is in flight.
 
 ## Tests
 

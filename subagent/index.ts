@@ -75,7 +75,8 @@ import {
 } from "./runs.ts";
 
 const MAX_PARALLEL_TASKS = 8;
-const MAX_CONCURRENCY = 4;
+// Env override so DAG schedulers (issue-workflow) can run more lanes than the default 4.
+const MAX_CONCURRENCY = Math.max(1, Number(process.env.PI_SUBAGENT_MAX_CONCURRENCY ?? 4) || 4);
 const PER_TASK_OUTPUT_CAP = 50 * 1024;
 const MAX_WIDGET_RUNS = 4;
 const TAB_WINDOW = 7;
