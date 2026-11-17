@@ -19,7 +19,7 @@ DAG 调度 + 并行池:同时最多 5 个 issue 在跑,各在自己的 worktree 
 ## 前置
 
 - `subagent` 工具(全局 subagent 扩展提供;没有就报错,别自己造轮子)
-- agent 用 `general`(`delegate` 不存在)
+- agent 用 `implementer`(用户级 `~/.pi/agent/agents/` 或项目级 `.pi/agents/`;它带 `subagent` 工具,才能在 `/skill:implement` 末尾派两个子代理跑 code-review)。`general` 现在也带 `subagent`,但派 issue 仍优先 `implementer`
 - 并发上限默认 4;跑 5 路要先 `export PI_SUBAGENT_MAX_CONCURRENCY=5` 再**重启 pi**(本仓库 `subagent/index.ts` 读这个变量)
 - issue 遵循仓库 issue-tracker 约定:顶部 `Status:` 行,`Blocked by` 列 `- #NN`
 - 主 checkout 干净:`git status --porcelain` 非空就停,让用户先提交或 stash
@@ -46,6 +46,7 @@ worktree 放项目根的 `.pi/` 下,但必须先把 `.pi/` 写进本地 exclude(
 ROOT=$(git rev-parse --show-toplevel)
 WT_ROOT="$ROOT/.pi/issue-worktrees"
 BASE=$(git rev-parse --abbrev-ref HEAD)      # 合并目标分支
+BASE_SHA=$(git rev-parse "$BASE")            # 本批 worktree 的分支起点,也是 code-review 的固定点
 git check-ignore -q .pi || printf '.pi/\n' >> "$(git rev-parse --git-common-dir)/info/exclude"
 git worktree add "$WT_ROOT/issue-NN" -b "issue/NN" "$BASE"
 ```
@@ -60,9 +61,9 @@ git worktree add "$WT_ROOT/issue-NN" -b "issue/NN" "$BASE"
 subagent({
   tasks: [
     {
-      agent: "general",
+      agent: "implementer",
       cwd: "$WT_ROOT/issue-NN",
-      task: "/skill:implement <issue 绝对路径>\n\n只改代码和测试,不要动 issue 文件本身(Status 由主代理维护)。完成后 `git add -A && git commit`,工作树必须干净(含 CONTEXT.md / AGENTS.md 等文档改动)。"
+      task: "/skill:implement <issue 绝对路径>\n\n审查固定点(code-review 的分支起点):$BASE_SHA\n\n只改代码和测试,不要动 issue 文件本身(Status 由主代理维护)。完成后 `git add -A && git commit`,工作树必须干净(含 CONTEXT.md / AGENTS.md 等文档改动)。"
     }
     // 同批其余 issue 各一条
   ]
