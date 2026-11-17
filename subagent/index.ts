@@ -77,6 +77,11 @@ import {
 const MAX_PARALLEL_TASKS = 8;
 // Env override so DAG schedulers (issue-workflow) can run more lanes than the default 4.
 const MAX_CONCURRENCY = Math.max(1, Number(process.env.PI_SUBAGENT_MAX_CONCURRENCY ?? 4) || 4);
+// Depth cap: a child process gets PI_SUBAGENT_DEPTH + 1 and refuses to delegate
+// once it reaches the cap, so a chain of subagents cannot spawn forever.
+const depthEnv = process.env.PI_SUBAGENT_MAX_DEPTH?.trim();
+const MAX_DEPTH = depthEnv && /^\d+$/.test(depthEnv) ? Number(depthEnv) : 2;
+const CURRENT_DEPTH = Number(process.env.PI_SUBAGENT_DEPTH) || 0;
 const PER_TASK_OUTPUT_CAP = 50 * 1024;
 const MAX_WIDGET_RUNS = 4;
 const TAB_WINDOW = 7;
@@ -419,6 +424,7 @@ async function runAgent(options: RunAgentOptions): Promise<SingleResult> {
 				cwd: options.cwd,
 				shell: false,
 				stdio: ["ignore", "pipe", "pipe"],
+				env: { ...process.env, PI_SUBAGENT_DEPTH: String(CURRENT_DEPTH + 1) },
 			});
 			let buffer = "";
 			let settled = false;
@@ -1007,6 +1013,18 @@ export default function subagentExtension(pi: ExtensionAPI): void {
 		}),
 
 		async execute(toolCallId, params, signal, _onUpdate, ctx) {
+			if (CURRENT_DEPTH >= MAX_DEPTH) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Subagent depth limit reached (depth ${CURRENT_DEPTH}, cap ${MAX_DEPTH}). Finish the work yourself instead of delegating.`,
+						},
+					],
+					details: { mode: "single", results: [] } satisfies SubagentDetails,
+				};
+			}
+
 			const agentScope: AgentScope = params.agentScope ?? "user";
 			const defaults: DispatchDefaults = {
 				model: ctx.model ? `${ctx.model.provider}/${ctx.model.id}` : undefined,

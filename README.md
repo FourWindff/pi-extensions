@@ -10,7 +10,7 @@ Six [pi](https://github.com/earendil-works/pi) coding-agent extensions and one s
 | `aurora-line/` | Visual: aurora curtains while the agent streams | none |
 | `last-user-message/` | Latest submitted user message on the right of the editor's top border, fixed 40-column preview | none |
 | `skill-rider/` | `/skill-rider` command — append an extra prompt to any skill without editing the skill's own files | optional rider store |
-| `skills/issue-workflow/` | Skill: batch-implement an issue directory — DAG from `Blocked by`, 5 worktrees in parallel, one subagent per issue, merge back as each returns | `general` agent, `/skill:implement`, `PI_SUBAGENT_MAX_CONCURRENCY=5` |
+| `skills/issue-workflow/` | Skill: batch-implement an issue directory — DAG from `Blocked by`, 5 worktrees in parallel, one subagent per issue, merge back as each returns | `implementer` agent, `/skill:implement`, `PI_SUBAGENT_MAX_CONCURRENCY=5` |
 
 Skills ride along with the extensions: `package.json` declares `pi.skills`, so the same `pi install` line installs both.
 
@@ -154,12 +154,16 @@ Both require a real TUI. In `--mode json`, print, rpc and subagent child process
 The skill (`skills/issue-workflow/SKILL.md`, invoke with `/skill:issue-workflow`) dispatches one subagent per issue, so it needs the pieces named in its own `前置` section:
 
 1. The `subagent` extension from this repo, loaded.
-2. An agent named `general` in `~/.pi/agent/agents/general.md` (`delegate` does not exist). `tools:` should include `read, grep, find, ls, bash, edit, write`.
+2. An agent named `implementer` in `~/.pi/agent/agents/implementer.md`. `tools:` must include `subagent` too, because `/skill:implement` ends by running `/skill:code-review`, which dispatches two parallel sub-agents of its own (`delegate` does not exist). `general` carries `subagent` as well, so it survives the same step; the depth cap (below) is what stops a chain from growing.
 3. The `/skill:implement` skill — the skill's dispatch prompt calls it inside each worktree.
 
 Five lanes instead of four require an env override plus a restart, because `subagent/` reads it at import time:
 
 ```bash
+# Cap on how deep a subagent chain may go; the default is 2.
+# Children read PI_SUBAGENT_DEPTH (set by the parent) and refuse to delegate at the cap.
+export PI_SUBAGENT_MAX_DEPTH=2
+# Lanes per process, not globally.
 export PI_SUBAGENT_MAX_CONCURRENCY=5   # then restart pi, /reload is not enough
 ```
 
